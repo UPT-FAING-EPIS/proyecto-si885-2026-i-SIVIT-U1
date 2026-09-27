@@ -9,7 +9,8 @@ import {
   AlertTriangle, 
   LogOut, 
   Sliders, 
-  ExternalLink 
+  ExternalLink,
+  BookOpen
 } from 'lucide-react';
 import { SystemUser } from '../types';
 
@@ -20,6 +21,8 @@ interface TopHeaderProps {
   onOpenAuditLogs: () => void;
   searchQuery: string;
   onSearchChange: (val: string) => void;
+  onLogout: () => void;
+  onOpenGuide?: () => void;
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
@@ -28,7 +31,9 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   onSelectUserRole,
   onOpenAuditLogs,
   searchQuery,
-  onSearchChange
+  onSearchChange,
+  onLogout,
+  onOpenGuide
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -148,6 +153,18 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           )}
         </div>
 
+        {/* Help & Guide Quick Link */}
+        {onOpenGuide && (
+          <button
+            onClick={onOpenGuide}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-slate-600 hover:text-red-700 hover:bg-red-50 border border-slate-200 transition-colors text-xs font-semibold"
+            title="Abrir Guía de Uso del Sistema"
+          >
+            <BookOpen className="w-4 h-4 text-red-600" />
+            <span className="hidden sm:inline">Guía de Uso</span>
+          </button>
+        )}
+
         {/* User Profile Avatar & Menu */}
         <div className="relative">
           <button
@@ -217,8 +234,23 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                   <Sliders className="w-3.5 h-3.5 text-red-600" />
                   <span>Mi Registro de Auditoría</span>
                 </button>
+                {onOpenGuide && (
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      onOpenGuide();
+                    }}
+                    className="w-full text-left px-2 py-1.5 rounded-lg text-xs text-slate-700 hover:bg-slate-100 flex items-center gap-2"
+                  >
+                    <BookOpen className="w-3.5 h-3.5 text-red-600" />
+                    <span>Guía y Manual de Usuario</span>
+                  </button>
+                )}
                 <button
-                  onClick={() => setShowProfileMenu(false)}
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    onLogout();
+                  }}
                   className="w-full text-left px-2 py-1.5 rounded-lg text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 font-medium"
                 >
                   <LogOut className="w-3.5 h-3.5" />

@@ -12,12 +12,25 @@ import { DataSourcesView } from './components/DataSourcesView';
 import { UserManagementView } from './components/UserManagementView';
 import { AuditLogsView } from './components/AuditLogsView';
 import { SettingsView } from './components/SettingsView';
+import { GuideView } from './components/GuideView';
 import { NewSiteModal } from './components/NewSiteModal';
 import { NewScanModal } from './components/NewScanModal';
 import { NewUserModal } from './components/NewUserModal';
 import { AuditDetailModal } from './components/AuditDetailModal';
 import { ScanResultsModal } from './components/ScanResultsModal';
 import { scanUrl, analyzeWithAI, ScanResult, AIAnalysis } from './api';
+import { 
+  getWebsitesFromDb, 
+  insertWebsiteToDb, 
+  getEvaluationsFromDb, 
+  insertEvaluationToDb, 
+  getAuditLogsFromDb, 
+  insertAuditLogToDb, 
+  getUsersFromDb,
+  insertUserToDb,
+  updateUserStatusInDb,
+  updateUserRoleInDb
+} from './supabase';
 
 import { 
   NavigationTab, 
@@ -38,8 +51,21 @@ import {
   initialAuditLogs 
 } from './mockData';
 
-export default function App() {
-  const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
+import { AuthUser } from './components/LoginView';
+
+interface AppProps {
+  authUser: AuthUser;
+  onLogout: () => void;
+}
+
+export default function App({ authUser, onLogout }: AppProps) {
+  const [currentTab, setCurrentTab] = useState<NavigationTab>(() => {
+    try {
+      const savedTab = localStorage.getItem('tacna_soc_active_tab') as NavigationTab;
+      if (savedTab) return savedTab;
+    } catch {}
+    return 'dashboard';
+  });
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const [selectedVulnCve, setSelectedVulnCve] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -67,8 +93,27 @@ export default function App() {
   const [users, setUsers] = useState<SystemUser[]>(initialUsers);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(initialAuditLogs);
 
-  // Active user profile (Administrator by default)
-  const [currentUser, setCurrentUser] = useState<SystemUser>(initialUsers[0]);
+  // Active user profile — synced from auth
+  const [currentUser, setCurrentUser] = useState<SystemUser>(() => {
+    const found = initialUsers.find(u => u.role === authUser.role) || initialUsers[0];
+    return { ...found, name: authUser.name, email: authUser.email, role: authUser.role };
+  });
+
+  // Sync live data from Supabase Cloud PostgreSQL
+  React.useEffect(() => {
+    getWebsitesFromDb().then(sites => {
+      if (sites && sites.length > 0) setWebsites(sites);
+    });
+    getEvaluationsFromDb().then(evals => {
+      if (evals && evals.length > 0) setEvaluaciones(evals);
+    });
+    getAuditLogsFromDb().then(logs => {
+      if (logs && logs.length > 0) setAuditLogs(logs);
+    });
+    getUsersFromDb().then(u => {
+      if (u && u.length > 0) setUsers(u);
+    });
+  }, []);
 
   // Toast feedback state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -111,6 +156,7 @@ export default function App() {
     };
 
     setAuditLogs(prev => [newLog, ...prev]);
+    insertAuditLogToDb(newLog);
   };
 
   // Switch role for simulation
@@ -142,6 +188,7 @@ export default function App() {
     };
 
     setWebsites(prev => [newSite, ...prev]);
+    insertWebsiteToDb(newSite);
     logAuditEvent(
       'CONFIG_MODIFIED',
       'AUDIT',
@@ -290,6 +337,14 @@ export default function App() {
     };
 
     setUsers(prev => [newUser, ...prev]);
+    insertUserToDb(newUser).then(success => {
+      if (success) {
+        showToast(`Usuario "${newUser.name}" guardado en Supabase.`);
+      } else {
+        showToast(`Usuario guardado localmente (revisar conexión Supabase).`);
+      }
+    });
+
     logAuditEvent(
       'USER_CREATED',
       'CRITICAL',
@@ -297,7 +352,6 @@ export default function App() {
       `Creación de nuevo usuario con rol ${newUser.role} asignado a ${newUser.name}.`,
       { email: newUser.email, role: newUser.role, department: newUser.department }
     );
-    showToast(`Usuario ${newUser.name} creado exitosamente.`);
   };
 
   // Handle toggling user status (Active / Suspended)
@@ -305,6 +359,7 @@ export default function App() {
     setUsers(prev => prev.map(u => {
       if (u.id === userId) {
         const nextStatus = u.status === 'Activo' ? 'Suspendido' : 'Activo';
+        updateUserStatusInDb(userId, nextStatus);
         logAuditEvent(
           nextStatus === 'Suspendido' ? 'USER_SUSPENDED' : 'USER_ROLE_UPDATED',
           nextStatus === 'Suspendido' ? 'CRITICAL' : 'WARNING',
@@ -321,6 +376,7 @@ export default function App() {
 
   // Handle updating role
   const handleUpdateRole = (userId: string, newRole: SystemUser['role']) => {
+    updateUserRoleInDb(userId, newRole);
     setUsers(prev => prev.map(u => {
       if (u.id === userId) {
         logAuditEvent(
@@ -411,6 +467,47 @@ export default function App() {
   // Active vulnerability object
   const currentVuln = vulnerabilities.find(v => v.cve === selectedVulnCve) || vulnerabilities[0];
 
+  // ─── Role-based tab restrictions ─────────────────────────────────────────
+  const getAllowedTabs = (role: AuthUser['role']): NavigationTab[] => {
+    if (role === 'Auditor') return ['dashboard', 'audit-logs', 'guide'];
+    if (role === 'Operator') return ['dashboard', 'websites', 'guide'];
+    return [
+      'dashboard',
+      'websites',
+      'vulnerabilities',
+      'evaluaciones',
+      'evaluations',
+      'reports',
+      'data-sources',
+      'user-management',
+      'audit-logs',
+      'settings',
+      'guide'
+    ];
+  };
+
+  const allowedTabs = getAllowedTabs(authUser.role);
+
+  // Validate currentTab against allowedTabs when role changes
+  React.useEffect(() => {
+    if (!allowedTabs.includes(currentTab)) {
+      setCurrentTab('dashboard');
+      try {
+        localStorage.setItem('tacna_soc_active_tab', 'dashboard');
+      } catch {}
+    }
+  }, [authUser.role]);
+
+  const handleTabChange = (tab: NavigationTab) => {
+    if (!allowedTabs.includes(tab)) return;
+    setCurrentTab(tab);
+    setSelectedSiteId(null);
+    setSelectedVulnCve(null);
+    try {
+      localStorage.setItem('tacna_soc_active_tab', tab);
+    } catch {}
+  };
+
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex font-sans">
       {/* Toast Notification Alert Banner */}
@@ -424,14 +521,12 @@ export default function App() {
       {/* Fixed Left Sidebar */}
       <Sidebar
         currentTab={currentTab}
-        onSelectTab={(tab) => {
-          setCurrentTab(tab);
-          setSelectedSiteId(null);
-          setSelectedVulnCve(null);
-        }}
+        onSelectTab={handleTabChange}
         currentUser={currentUser}
         isOpenMobile={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
+        allowedTabs={allowedTabs}
+        onLogout={onLogout}
       />
 
       {/* Main Container */}
@@ -447,6 +542,8 @@ export default function App() {
           }}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          onLogout={onLogout}
+          onOpenGuide={() => setCurrentTab('guide')}
         />
 
         {/* Content Area with top header padding */}
@@ -567,6 +664,18 @@ export default function App() {
                 logAuditEvent('CONFIG_MODIFIED', 'WARNING', 'Configuración Global SOC', msg);
                 showToast(msg);
               }}
+            />
+          )}
+
+          {/* User Guide View */}
+          {currentTab === 'guide' && (
+            <GuideView
+              onNavigateTab={(tab) => {
+                setCurrentTab(tab);
+                setSelectedSiteId(null);
+                setSelectedVulnCve(null);
+              }}
+              onOpenNewScan={() => setIsNewScanModalOpen(true)}
             />
           )}
         </main>

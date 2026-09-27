@@ -3,11 +3,13 @@ export type NavigationTab =
   | 'websites'
   | 'vulnerabilities'
   | 'evaluations'
+  | 'evaluaciones'
   | 'reports'
   | 'data-sources'
   | 'user-management'
   | 'audit-logs'
-  | 'settings';
+  | 'settings'
+  | 'guide';
 
 export type RiskLevel = 'Crítico' | 'Alto' | 'Medio' | 'Bajo';
 

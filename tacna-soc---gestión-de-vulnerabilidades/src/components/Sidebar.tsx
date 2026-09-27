@@ -10,7 +10,9 @@ import {
   Users, 
   ScrollText,
   ShieldCheck,
-  ChevronRight
+  ChevronRight,
+  LogOut,
+  BookOpen
 } from 'lucide-react';
 import { NavigationTab, SystemUser } from '../types';
 
@@ -20,6 +22,8 @@ interface SidebarProps {
   currentUser: SystemUser;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
+  allowedTabs?: NavigationTab[];
+  onLogout?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -27,8 +31,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   currentUser,
   isOpenMobile,
-  onCloseMobile
+  onCloseMobile,
+  allowedTabs,
+  onLogout
 }) => {
+  const isAllowed = (tab: NavigationTab) => !allowedTabs || allowedTabs.includes(tab);
   const navItems = [
     { id: 'dashboard' as NavigationTab, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'websites' as NavigationTab, label: 'Sitios Web', icon: Globe },
@@ -36,6 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'evaluaciones' as NavigationTab, label: 'Evaluaciones', icon: BarChart3 },
     { id: 'reports' as NavigationTab, label: 'Reportes', icon: FileText },
     { id: 'data-sources' as NavigationTab, label: 'Fuentes de Datos', icon: Database },
+    { id: 'guide' as NavigationTab, label: 'Guía de Uso', icon: BookOpen, badge: 'Manual' },
   ];
 
   const adminItems = [
@@ -85,7 +93,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="px-3 py-1 font-mono text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
             Monitoreo
           </div>
-          {navItems.map((item) => {
+          {navItems.filter(item => isAllowed(item.id)).map((item) => {
             const Icon = item.icon;
             const isActive = currentTab === item.id;
             return (
@@ -93,79 +101,92 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
                 className={`
-                  w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 text-left
+                  w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 text-left
                   ${isActive 
                     ? 'text-red-700 bg-red-50/80 border-l-4 border-red-600 shadow-xs font-semibold' 
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }
                 `}
               >
-                <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-red-600' : 'text-slate-400'}`} />
-                <span className="truncate">{item.label}</span>
+                <div className="flex items-center gap-3 truncate">
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-red-600' : 'text-slate-400'}`} />
+                  <span className="truncate">{item.label}</span>
+                </div>
+                {item.badge && (
+                  <span className="font-mono text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">
+                    {item.badge}
+                  </span>
+                )}
               </button>
             );
           })}
 
-          {/* Administrator / Audit Section */}
-          <div className="pt-4 mt-2 border-t border-slate-200">
-            <div className="px-3 py-1 font-mono text-[10px] text-slate-400 uppercase tracking-wider font-semibold flex items-center justify-between">
-              <span>Gobernanza & Auditoría</span>
-              <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">
-                Admin
-              </span>
+          {/* Administrator / Audit Section — only shown if user has access to at least one admin tab */}
+          {adminItems.some(item => isAllowed(item.id)) && (
+            <div className="pt-4 mt-2 border-t border-slate-200">
+              <div className="px-3 py-1 font-mono text-[10px] text-slate-400 uppercase tracking-wider font-semibold flex items-center justify-between">
+                <span>Gobernanza &amp; Auditoría</span>
+                <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">
+                  Admin
+                </span>
+              </div>
+              {adminItems.filter(item => isAllowed(item.id)).map((item) => {
+                const Icon = item.icon;
+                const isActive = currentTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleNavClick(item.id)}
+                    className={`
+                      w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 text-left
+                      ${isActive 
+                        ? 'text-red-700 bg-red-50/80 border-l-4 border-red-600 shadow-xs font-semibold' 
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                      }
+                    `}
+                  >
+                    <div className="flex items-center gap-3 truncate">
+                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-red-600' : 'text-slate-400'}`} />
+                      <span className="truncate">{item.label}</span>
+                    </div>
+                    <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                      item.badge === 'Live' 
+                        ? 'bg-red-600 text-white' 
+                        : 'bg-slate-100 text-slate-700 border border-slate-200'
+                    }`}>
+                      {item.badge}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-            {adminItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavClick(item.id)}
-                  className={`
-                    w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 text-left
-                    ${isActive 
-                      ? 'text-red-700 bg-red-50/80 border-l-4 border-red-600 shadow-xs font-semibold' 
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
-                    }
-                  `}
-                >
-                  <div className="flex items-center gap-3 truncate">
-                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-red-600' : 'text-slate-400'}`} />
-                    <span className="truncate">{item.label}</span>
-                  </div>
-                  <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                    item.badge === 'Live' 
-                      ? 'bg-red-600 text-white' 
-                      : 'bg-slate-100 text-slate-700 border border-slate-200'
-                  }`}>
-                    {item.badge}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          )}
         </div>
 
         {/* Bottom Section: Config & Active User Status */}
         <div className="px-3 pt-3 border-t border-slate-200 space-y-1 mt-auto">
-          <button
-            onClick={() => handleNavClick('settings')}
-            className={`
-              w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors text-left
-              ${currentTab === 'settings' 
-                ? 'text-red-700 bg-red-50 border-l-4 border-red-600 font-semibold' 
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
-              }
-            `}
-          >
-            <Settings className="w-4 h-4 text-slate-400" />
-            <span>Configuración</span>
-          </button>
+          {isAllowed('settings') && (
+            <button
+              onClick={() => handleNavClick('settings')}
+              className={`
+                w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors text-left
+                ${currentTab === 'settings' 
+                  ? 'text-red-700 bg-red-50 border-l-4 border-red-600 font-semibold' 
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                }
+              `}
+            >
+              <Settings className="w-4 h-4 text-slate-400" />
+              <span>Configuración</span>
+            </button>
+          )}
 
-          {/* User mini status card */}
+          {/* User mini status card with Logout */}
           <div className="mt-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-red-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
-              UD
+              {currentUser.name
+                ? currentUser.name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
+                : 'SO'}
             </div>
             <div className="overflow-hidden flex-1">
               <p className="text-xs font-bold text-slate-900 truncate">{currentUser.name}</p>
@@ -174,7 +195,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span className="text-[10px] font-mono text-slate-500 truncate">{currentUser.role}</span>
               </div>
             </div>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                title="Cerrar sesión"
+                className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </aside>
