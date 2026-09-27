@@ -16,6 +16,8 @@ import { NewSiteModal } from './components/NewSiteModal';
 import { NewScanModal } from './components/NewScanModal';
 import { NewUserModal } from './components/NewUserModal';
 import { AuditDetailModal } from './components/AuditDetailModal';
+import { ScanResultsModal } from './components/ScanResultsModal';
+import { scanUrl, analyzeWithAI, ScanResult, AIAnalysis } from './api';
 
 import { 
   NavigationTab, 
@@ -49,6 +51,13 @@ export default function App() {
   const [isNewScanModalOpen, setIsNewScanModalOpen] = useState(false);
   const [isNewUserModalOpen, setIsNewUserModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Real scan modal state
+  const [isScanResultsModalOpen, setIsScanResultsModalOpen] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
+  const [activeScanResult, setActiveScanResult] = useState<ScanResult | null>(null);
+  const [activeAIAnalysis, setActiveAIAnalysis] = useState<AIAnalysis | null>(null);
 
   // System state
   const [websites, setWebsites] = useState<WebsiteItem[]>(initialWebsites);
@@ -143,49 +152,99 @@ export default function App() {
     showToast(`Sitio "${newSite.name}" registrado correctamente.`);
   };
 
-  // Handle quick scan
-  const handleQuickScan = (site: WebsiteItem) => {
+  // Handle quick scan — REAL security scan via backend API
+  const handleQuickScan = async (site: WebsiteItem) => {
     const newEvalId = `EVAL-${Math.floor(100 + Math.random() * 900)}`;
     const newEval: EvaluationItem = {
       id: newEvalId,
       target: site.url.replace('https://', ''),
       date: 'Ahora mismo',
-      critical: site.criticalCount,
-      high: site.highCount,
-      medium: site.mediumCount,
-      low: site.lowCount,
-      score: site.riskScore >= 70 ? 'D' : site.riskScore >= 40 ? 'B' : 'A',
+      critical: 0, high: 0, medium: 0, low: 0,
+      score: 'B',
       status: 'En Progreso',
-      progress: 25
+      progress: 10
     };
 
     setEvaluaciones(prev => [newEval, ...prev]);
     setCurrentTab('evaluaciones');
-    logAuditEvent(
-      'SCAN_TRIGGERED',
-      'AUDIT',
-      site.url,
-      `Escaneo de seguridad lanzado sobre el activo ${site.name} (${site.ip}).`,
+
+    // Open scan modal immediately
+    setActiveScanResult(null);
+    setActiveAIAnalysis(null);
+    setIsScanning(true);
+    setIsAnalyzingAI(false);
+    setIsScanResultsModalOpen(true);
+
+    logAuditEvent('SCAN_TRIGGERED', 'AUDIT', site.url,
+      `Escaneo REAL de seguridad lanzado sobre ${site.name} (${site.ip}).`,
       { evaluationId: newEvalId, targetUrl: site.url }
     );
-    showToast(`Iniciando escaneo sobre ${site.name}...`);
+    showToast(`Iniciando escaneo real sobre ${site.name}...`);
 
-    // Simulate scan progression
-    setTimeout(() => {
-      setEvaluaciones(prev => prev.map(e => e.id === newEvalId ? { ...e, progress: 75 } : e));
-    }, 1500);
+    try {
+      // Update progress to 30%
+      setEvaluaciones(prev => prev.map(e => e.id === newEvalId ? { ...e, progress: 30 } : e));
 
-    setTimeout(() => {
-      setEvaluaciones(prev => prev.map(e => e.id === newEvalId ? { ...e, status: 'Completado', progress: 100 } : e));
-      logAuditEvent(
-        'SCAN_COMPLETED',
-        'INFO',
-        site.url,
-        `Escaneo ${newEvalId} completado exitosamente sin interrupciones.`,
-        { evaluationId: newEvalId, score: newEval.score }
+      // Real HTTP security scan
+      const result = await scanUrl(site.url);
+      setActiveScanResult(result);
+      setIsScanning(false);
+
+      // Update progress to 60%
+      setEvaluaciones(prev => prev.map(e => e.id === newEvalId ? { ...e, progress: 60 } : e));
+
+      // AI analysis
+      setIsAnalyzingAI(true);
+      let analysis: AIAnalysis | null = null;
+      try {
+        analysis = await analyzeWithAI(result);
+        setActiveAIAnalysis(analysis);
+      } catch (aiErr) {
+        setActiveAIAnalysis({ resumen: '', riesgoGeneral: '', recomendaciones: [], vulnerabilidadesPrincipales: [], error: String(aiErr) });
+      }
+      setIsAnalyzingAI(false);
+
+      // Calculate score
+      const score: EvaluationItem['score'] = result.critical > 0 ? 'F' : result.high > 2 ? 'D' : result.high > 0 ? 'C' : result.medium > 3 ? 'B' : 'A';
+
+      // Update evaluation with real data
+      setEvaluaciones(prev => prev.map(e => e.id === newEvalId ? {
+        ...e,
+        status: 'Completado',
+        progress: 100,
+        critical: result.critical,
+        high: result.high,
+        medium: result.medium,
+        low: result.low,
+        score
+      } : e));
+
+      // Update website risk data with real results
+      setWebsites(prev => prev.map(w => w.id === site.id ? {
+        ...w,
+        criticalCount: result.critical,
+        highCount: result.high,
+        mediumCount: result.medium,
+        lowCount: result.low,
+        vulnCount: result.totalFindings,
+        riskScore: Math.min(100, result.critical * 25 + result.high * 10 + result.medium * 5 + result.low),
+        riskLevel: result.critical > 0 ? 'Crítico' : result.high > 0 ? 'Alto' : result.medium > 0 ? 'Medio' : 'Bajo',
+        lastEvaluation: new Date().toLocaleString('es-PE')
+      } : w));
+
+      logAuditEvent('SCAN_COMPLETED', 'INFO', site.url,
+        `Escaneo real ${newEvalId} completado: ${result.totalFindings} hallazgos detectados. Puntuación: ${score}`,
+        { evaluationId: newEvalId, findings: result.totalFindings, score }
       );
-      showToast(`Escaneo de ${site.name} completado.`);
-    }, 3200);
+      showToast(`Escaneo completado: ${result.totalFindings} hallazgos en ${site.name}.`);
+
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setIsScanning(false);
+      setIsAnalyzingAI(false);
+      setEvaluaciones(prev => prev.map(e => e.id === newEvalId ? { ...e, status: 'Fallido', progress: 0 } : e));
+      showToast(`Error al escanear ${site.name}: ${msg}`);
+    }
   };
 
   // Handle new scan modal submission
@@ -536,6 +595,16 @@ export default function App() {
       <AuditDetailModal
         log={inspectedLog}
         onClose={() => setInspectedLog(null)}
+      />
+
+      {/* Real Scan Results Modal */}
+      <ScanResultsModal
+        isOpen={isScanResultsModalOpen}
+        isScanning={isScanning}
+        scanResult={activeScanResult}
+        aiAnalysis={activeAIAnalysis}
+        isAnalyzingAI={isAnalyzingAI}
+        onClose={() => setIsScanResultsModalOpen(false)}
       />
     </div>
   );
