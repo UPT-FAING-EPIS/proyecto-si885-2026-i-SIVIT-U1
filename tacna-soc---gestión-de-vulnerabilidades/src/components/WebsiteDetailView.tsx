@@ -30,9 +30,23 @@ export const WebsiteDetailView: React.FC<WebsiteDetailViewProps> = ({
   onSelectVuln,
   onReevaluate
 }) => {
-  const siteVulns = vulnerabilities.filter(v => 
-    v.affectedSites.some(s => s.toLowerCase().includes(site.name.toLowerCase()) || site.url.includes(s))
-  );
+  const siteVulns = (vulnerabilities || []).filter(v => {
+    if (!v?.affectedSites || !Array.isArray(v.affectedSites)) return false;
+    const targetName = String(site?.name || '').toLowerCase();
+    const targetUrl = String(site?.url || '').toLowerCase();
+    const targetIp = String(site?.ip || '');
+
+    return v.affectedSites.some((s: any) => {
+      const sName = String(typeof s === 'string' ? s : s?.siteName || '').toLowerCase();
+      const sIp = String(typeof s === 'object' && s ? s.ip || '' : '');
+      
+      return (
+        (targetName && sName && sName.includes(targetName)) ||
+        (targetUrl && sName && targetUrl.includes(sName)) ||
+        (targetIp && sIp && targetIp === sIp)
+      );
+    });
+  });
 
   return (
     <div className="space-y-6">

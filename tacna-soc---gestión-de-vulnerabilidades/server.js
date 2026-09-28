@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import https from 'https';
 import http from 'http';
+import dns from 'dns';
 
 dotenv.config();
 
@@ -16,6 +17,21 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'dist')));
+
+// ─────────────────────────────────────────────
+// DNS IP RESOLUTION ENDPOINT
+// ─────────────────────────────────────────────
+app.get('/api/resolve-ip', async (req, res) => {
+  const { host } = req.query;
+  if (!host) return res.status(400).json({ error: 'host requerido' });
+  try {
+    const cleanHost = String(host).replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
+    const lookup = await dns.promises.lookup(cleanHost);
+    res.json({ ip: lookup.address, hostname: cleanHost });
+  } catch (err) {
+    res.status(404).json({ error: 'No se pudo resolver la IP vía DNS: ' + err.message });
+  }
+});
 
 // ─────────────────────────────────────────────
 // REAL SECURITY SCAN ENDPOINT

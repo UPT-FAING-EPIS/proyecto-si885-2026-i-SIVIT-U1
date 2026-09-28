@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import { LoginView, AuthUser } from './components/LoginView';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 
 const AUTH_STORAGE_KEY = 'tacna_soc_auth_user';
@@ -10,8 +11,15 @@ function Root() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
     try {
       const saved = localStorage.getItem(AUTH_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : null;
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      if (parsed && typeof parsed === 'object' && parsed.email && parsed.role) {
+        return parsed as AuthUser;
+      }
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      return null;
     } catch {
+      try { localStorage.removeItem(AUTH_STORAGE_KEY); } catch {}
       return null;
     }
   });
@@ -47,4 +55,9 @@ function Root() {
   );
 }
 
-createRoot(document.getElementById('root')!).render(<Root />);
+createRoot(document.getElementById('root')!).render(
+  <ErrorBoundary>
+    <Root />
+  </ErrorBoundary>
+);
+

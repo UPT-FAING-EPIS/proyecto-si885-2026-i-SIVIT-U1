@@ -59,10 +59,20 @@ interface AppProps {
 }
 
 export default function App({ authUser, onLogout }: AppProps) {
+  const safeAuthRole = authUser?.role || 'Super Admin';
+  const safeAuthName = authUser?.name || 'Carlos Mendoza';
+  const safeAuthEmail = authUser?.email || 'admin@tacnasoc.pe';
+
   const [currentTab, setCurrentTab] = useState<NavigationTab>(() => {
     try {
       const savedTab = localStorage.getItem('tacna_soc_active_tab') as NavigationTab;
-      if (savedTab) return savedTab;
+      const validTabs: NavigationTab[] = [
+        'dashboard', 'websites', 'vulnerabilities', 'evaluaciones', 'evaluations',
+        'reports', 'data-sources', 'user-management', 'audit-logs', 'settings', 'guide'
+      ];
+      if (savedTab && validTabs.includes(savedTab)) {
+        return savedTab === 'evaluations' ? 'evaluaciones' : savedTab;
+      }
     } catch {}
     return 'dashboard';
   });
@@ -93,10 +103,10 @@ export default function App({ authUser, onLogout }: AppProps) {
   const [users, setUsers] = useState<SystemUser[]>(initialUsers);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(initialAuditLogs);
 
-  // Active user profile — synced from auth
+  // Active user profile — synced from auth with safe defaults
   const [currentUser, setCurrentUser] = useState<SystemUser>(() => {
-    const found = initialUsers.find(u => u.role === authUser.role) || initialUsers[0];
-    return { ...found, name: authUser.name, email: authUser.email, role: authUser.role };
+    const found = initialUsers.find(u => u.role === safeAuthRole) || initialUsers[0];
+    return { ...found, name: safeAuthName, email: safeAuthEmail, role: safeAuthRole };
   });
 
   // Sync live data from Supabase Cloud PostgreSQL
@@ -188,7 +198,13 @@ export default function App({ authUser, onLogout }: AppProps) {
     };
 
     setWebsites(prev => [newSite, ...prev]);
-    insertWebsiteToDb(newSite);
+    insertWebsiteToDb(newSite).then(success => {
+      if (success) {
+        showToast(`Sitio "${newSite.name}" guardado en Supabase.`);
+      } else {
+        showToast(`Sitio registrado localmente.`);
+      }
+    });
     logAuditEvent(
       'CONFIG_MODIFIED',
       'AUDIT',
@@ -445,9 +461,10 @@ export default function App({ authUser, onLogout }: AppProps) {
   };
 
   const handleSelectSiteByName = (siteName: string) => {
-    const found = websites.find(w => 
-      w.name.toLowerCase().includes(siteName.toLowerCase()) || 
-      w.url.toLowerCase().includes(siteName.toLowerCase())
+    const search = String(siteName || '').toLowerCase();
+    const found = (websites || []).find(w => 
+      String(w?.name || '').toLowerCase().includes(search) || 
+      String(w?.url || '').toLowerCase().includes(search)
     );
     if (found) {
       setSelectedSiteId(found.id);
@@ -461,14 +478,14 @@ export default function App({ authUser, onLogout }: AppProps) {
     setSelectedVulnCve(cve);
   };
 
-  // Active site object
-  const currentSite = websites.find(w => w.id === selectedSiteId) || websites[0];
+  // Active site object with fallback
+  const currentSite = websites.find(w => w.id === selectedSiteId) || websites[0] || initialWebsites[0];
 
-  // Active vulnerability object
-  const currentVuln = vulnerabilities.find(v => v.cve === selectedVulnCve) || vulnerabilities[0];
+  // Active vulnerability object with fallback
+  const currentVuln = vulnerabilities.find(v => v.cve === selectedVulnCve) || vulnerabilities[0] || initialVulnerabilities[0];
 
   // ─── Role-based tab restrictions ─────────────────────────────────────────
-  const getAllowedTabs = (role: AuthUser['role']): NavigationTab[] => {
+  const getAllowedTabs = (role?: AuthUser['role']): NavigationTab[] => {
     if (role === 'Auditor') return ['dashboard', 'audit-logs', 'guide'];
     if (role === 'Operator') return ['dashboard', 'websites', 'guide'];
     return [
@@ -486,17 +503,17 @@ export default function App({ authUser, onLogout }: AppProps) {
     ];
   };
 
-  const allowedTabs = getAllowedTabs(authUser.role);
+  const allowedTabs = getAllowedTabs(currentUser?.role || safeAuthRole);
 
   // Validate currentTab against allowedTabs when role changes
   React.useEffect(() => {
-    if (!allowedTabs.includes(currentTab)) {
+    if (!allowedTabs.includes(currentTab) && currentTab !== 'evaluaciones' && currentTab !== 'evaluations') {
       setCurrentTab('dashboard');
       try {
         localStorage.setItem('tacna_soc_active_tab', 'dashboard');
       } catch {}
     }
-  }, [authUser.role]);
+  }, [currentUser?.role, safeAuthRole]);
 
   const handleTabChange = (tab: NavigationTab) => {
     if (!allowedTabs.includes(tab)) return;
@@ -604,7 +621,7 @@ export default function App({ authUser, onLogout }: AppProps) {
           )}
 
           {/* Evaluations View */}
-          {currentTab === 'evaluaciones' && (
+          {(currentTab === 'evaluaciones' || currentTab === 'evaluations') && (
             <EvaluationsView
               evaluaciones={evaluaciones}
               onOpenNewScanModal={() => setIsNewScanModalOpen(true)}
@@ -676,6 +693,22 @@ export default function App({ authUser, onLogout }: AppProps) {
                 setSelectedVulnCve(null);
               }}
               onOpenNewScan={() => setIsNewScanModalOpen(true)}
+            />
+          )}
+
+          {/* Default fallback view if currentTab is unrecognized */}
+          {!['dashboard', 'websites', 'vulnerabilities', 'evaluaciones', 'evaluations', 'reports', 'data-sources', 'user-management', 'audit-logs', 'settings', 'guide'].includes(currentTab) && (
+            <DashboardView
+              websites={websites}
+              onSelectSite={handleSelectSiteByName}
+              onNavigateToVulns={() => {
+                setCurrentTab('vulnerabilities');
+                setSelectedVulnCve(null);
+              }}
+              onNavigateToSites={() => {
+                setCurrentTab('websites');
+                setSelectedSiteId(null);
+              }}
             />
           )}
         </main>

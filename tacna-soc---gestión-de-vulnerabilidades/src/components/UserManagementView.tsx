@@ -36,13 +36,18 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
 
   const roles = ['Todos', 'Super Admin', 'Security Analyst', 'Auditor', 'Operator'];
 
-  const filteredUsers = users.filter(u => {
-    const matchesSearch = 
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.department.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredUsers = (users || []).filter(u => {
+    const term = (searchTerm || '').toLowerCase();
+    const name = String(u?.name || '').toLowerCase();
+    const email = String(u?.email || '').toLowerCase();
+    const dept = String(u?.department || '').toLowerCase();
 
-    const matchesRole = selectedRole === 'Todos' || u.role === selectedRole;
+    const matchesSearch = 
+      name.includes(term) ||
+      email.includes(term) ||
+      dept.includes(term);
+
+    const matchesRole = selectedRole === 'Todos' || u?.role === selectedRole;
 
     return matchesSearch && matchesRole;
   });

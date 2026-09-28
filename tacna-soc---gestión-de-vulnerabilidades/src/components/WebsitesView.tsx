@@ -32,15 +32,21 @@ export const WebsitesView: React.FC<WebsitesViewProps> = ({
   const categories = ['Todas', 'Gobierno', 'Educación', 'Salud', 'Finanzas'];
   const riskLevels = ['Todos', 'Crítico', 'Alto', 'Medio', 'Bajo'];
 
-  const filteredSites = websites.filter((site) => {
-    const matchesSearch = 
-      site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      site.url.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      site.ip.includes(searchTerm) ||
-      site.institution.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredSites = (websites || []).filter((site) => {
+    const term = (searchTerm || '').toLowerCase();
+    const name = String(site?.name || '').toLowerCase();
+    const url = String(site?.url || '').toLowerCase();
+    const ip = String(site?.ip || '');
+    const institution = String(site?.institution || '').toLowerCase();
 
-    const matchesCategory = selectedCategory === 'Todas' || site.category === selectedCategory;
-    const matchesRisk = selectedRisk === 'Todos' || site.riskLevel === selectedRisk;
+    const matchesSearch = 
+      name.includes(term) ||
+      url.includes(term) ||
+      ip.includes(term) ||
+      institution.includes(term);
+
+    const matchesCategory = selectedCategory === 'Todas' || site?.category === selectedCategory;
+    const matchesRisk = selectedRisk === 'Todos' || site?.riskLevel === selectedRisk;
 
     return matchesSearch && matchesCategory && matchesRisk;
   });

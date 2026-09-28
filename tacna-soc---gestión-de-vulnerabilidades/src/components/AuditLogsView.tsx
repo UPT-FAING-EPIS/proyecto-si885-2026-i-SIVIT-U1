@@ -41,16 +41,24 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
   const severities = ['Todas', 'INFO', 'WARNING', 'CRITICAL', 'AUDIT'];
 
-  const filteredLogs = logs.filter(log => {
-    const matchesSearch = 
-      log.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.actor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.actor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.eventType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.ipAddress.includes(searchTerm) ||
-      log.sha256Checksum.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredLogs = (logs || []).filter(log => {
+    const term = (searchTerm || '').toLowerCase();
+    const desc = String(log?.description || '').toLowerCase();
+    const actorName = String(log?.actor?.name || '').toLowerCase();
+    const actorEmail = String(log?.actor?.email || '').toLowerCase();
+    const evt = String(log?.eventType || '').toLowerCase();
+    const ip = String(log?.ipAddress || '');
+    const checksum = String(log?.sha256Checksum || '').toLowerCase();
 
-    const matchesSeverity = selectedSeverity === 'Todas' || log.severity === selectedSeverity;
+    const matchesSearch = 
+      desc.includes(term) ||
+      actorName.includes(term) ||
+      actorEmail.includes(term) ||
+      evt.includes(term) ||
+      ip.includes(term) ||
+      checksum.includes(term);
+
+    const matchesSeverity = selectedSeverity === 'Todas' || log?.severity === selectedSeverity;
 
     return matchesSearch && matchesSeverity;
   });

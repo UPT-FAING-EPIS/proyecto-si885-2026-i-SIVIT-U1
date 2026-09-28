@@ -31,19 +31,19 @@ export async function getWebsitesFromDb(): Promise<WebsiteItem[]> {
     }
 
     return data.map((d: any) => ({
-      id: d.id,
-      name: d.name,
-      institution: d.institution,
-      category: d.category,
-      url: d.url,
-      ip: d.ip || '192.168.1.1',
-      lastEvaluation: d.last_evaluation || '2026-09-27',
-      vulnCount: d.vuln_count || 0,
-      criticalCount: d.critical_count || 0,
-      highCount: d.high_count || 0,
-      mediumCount: d.medium_count || 0,
-      lowCount: d.low_count || 0,
-      riskScore: d.risk_score || 0,
+      id: String(d.id || `site-${Date.now()}`),
+      name: String(d.name || 'Portal Institucional'),
+      institution: String(d.institution || 'Entidad Tacna'),
+      category: d.category || 'Gobierno',
+      url: String(d.url || 'https://tacna.gob.pe'),
+      ip: String(d.ip || '190.119.200.45'),
+      lastEvaluation: String(d.last_evaluation || 'Pendiente'),
+      vulnCount: Number(d.vuln_count) || 0,
+      criticalCount: Number(d.critical_count) || 0,
+      highCount: Number(d.high_count) || 0,
+      mediumCount: Number(d.medium_count) || 0,
+      lowCount: Number(d.low_count) || 0,
+      riskScore: Number(d.risk_score) || 0,
       riskLevel: d.risk_level || 'Bajo',
       status: d.status || 'Activo'
     }));

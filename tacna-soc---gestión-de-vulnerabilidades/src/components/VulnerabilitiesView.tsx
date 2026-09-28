@@ -27,14 +27,23 @@ export const VulnerabilitiesView: React.FC<VulnerabilitiesViewProps> = ({
   const owaspCategories = ['Todas', 'A01: Broken Access', 'A03: Injection', 'A05: Misconfiguration', 'A07: Auth Failure', 'A06: Outdated'];
 
   const filteredVulns = vulnerabilities.filter(v => {
+    const term = (searchTerm || '').toLowerCase();
+    const cve = String(v?.cve || '').toLowerCase();
+    const title = String(v?.title || (v as any)?.name || '').toLowerCase();
+    const description = String(v?.description || '').toLowerCase();
+
     const matchesSearch = 
-      v.cve.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.affectedSites.some(s => s.toLowerCase().includes(searchTerm.toLowerCase()));
+      cve.includes(term) ||
+      title.includes(term) ||
+      description.includes(term) ||
+      (Array.isArray(v?.affectedSites) && v.affectedSites.some((s: any) => {
+        const sName = String(typeof s === 'string' ? s : s?.siteName || s?.ip || '').toLowerCase();
+        return sName.includes(term);
+      }));
 
     const matchesSeverity = selectedSeverity === 'Todas' || v.severity === selectedSeverity;
-    const matchesOwasp = selectedOwasp === 'Todas' || v.owaspCategory.toLowerCase().includes(selectedOwasp.toLowerCase().slice(0, 3));
+    const owasp = String(v?.owaspCategory || '').toLowerCase();
+    const matchesOwasp = selectedOwasp === 'Todas' || owasp.includes(selectedOwasp.toLowerCase().slice(0, 3));
 
     return matchesSearch && matchesSeverity && matchesOwasp;
   });
@@ -152,12 +161,12 @@ export const VulnerabilitiesView: React.FC<VulnerabilitiesViewProps> = ({
 
                     <td className="py-3.5 px-3">
                       <div className="flex flex-wrap gap-1">
-                        {v.affectedSites.map((s, idx) => (
+                        {(v.affectedSites || []).map((s: any, idx) => (
                           <span 
                             key={idx} 
                             className="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-mono px-1.5 py-0.5 rounded"
                           >
-                            {s}
+                            {typeof s === 'string' ? s : s?.siteName || s?.ip || 'Activo'}
                           </span>
                         ))}
                       </div>

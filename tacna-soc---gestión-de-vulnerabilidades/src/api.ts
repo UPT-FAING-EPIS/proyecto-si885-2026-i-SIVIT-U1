@@ -73,3 +73,38 @@ export async function searchCVE(keyword: string, limit = 5): Promise<Array<{
   if (!response.ok) throw new Error('Error buscando CVEs');
   return response.json();
 }
+
+export async function resolveDomainIp(targetUrl: string): Promise<string | null> {
+  try {
+    const clean = targetUrl.trim().replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
+    if (!clean) return null;
+
+    // Check if it's already an IP address
+    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(clean)) {
+      return clean;
+    }
+
+    const res = await fetch(`/api/resolve-ip?host=${encodeURIComponent(clean)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.ip) return data.ip;
+    }
+  } catch {
+    // Backend fetch failed or in static mode
+  }
+
+  // Fallback to Google DNS over HTTPS
+  try {
+    const clean = targetUrl.trim().replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
+    const res = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(clean)}&type=A`);
+    if (res.ok) {
+      const data = await res.json();
+      const ans = data.Answer?.find((a: any) => a.type === 1);
+      if (ans?.data) return ans.data;
+    }
+  } catch {
+    // Network fallback failed
+  }
+
+  return null;
+}

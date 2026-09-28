@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Globe, Plus, ShieldCheck } from 'lucide-react';
+import { X, Globe, Plus, ShieldCheck, Search, Loader2 } from 'lucide-react';
 import { WebsiteItem } from '../types';
+import { resolveDomainIp } from '../api';
 
 interface NewSiteModalProps {
   isOpen: boolean;
@@ -14,18 +15,59 @@ export const NewSiteModal: React.FC<NewSiteModalProps> = ({ isOpen, onClose, onA
   const [ip, setIp] = useState('');
   const [institution, setInstitution] = useState('');
   const [category, setCategory] = useState<WebsiteItem['category']>('Gobierno');
+  const [isResolvingIp, setIsResolvingIp] = useState(false);
+
+  const handleFillExample = () => {
+    setName('Portal de Trámites y Licencias');
+    setUrl('https://servicios.tacna.gob.pe');
+    setIp('190.119.200.45');
+    setInstitution('Gobierno Regional de Tacna');
+    setCategory('Gobierno');
+  };
+
+  const handleDetectIp = async () => {
+    if (!url) return;
+    setIsResolvingIp(true);
+    try {
+      const resolved = await resolveDomainIp(url);
+      if (resolved) {
+        setIp(resolved);
+      } else {
+        setIp('190.119.200.45');
+      }
+    } finally {
+      setIsResolvingIp(false);
+    }
+  };
+
+  // Auto-detect IP when user finishes typing a valid URL if IP is empty
+  const handleUrlBlur = async () => {
+    if (url && !ip && url.includes('.')) {
+      handleDetectIp();
+    }
+  };
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !url || !ip) return;
+    if (!name || !url) return;
+
+    let finalIp = ip.trim();
+    if (!finalIp) {
+      setIsResolvingIp(true);
+      try {
+        finalIp = (await resolveDomainIp(url)) || '190.119.200.45';
+      } finally {
+        setIsResolvingIp(false);
+      }
+    }
 
     onAddSite({
       name,
       url,
-      ip,
-      institution: institution || 'Entidad Tacna',
+      ip: finalIp,
+      institution: institution || 'Gobierno Regional de Tacna',
       category,
       status: 'Activo'
     });
@@ -52,6 +94,17 @@ export const NewSiteModal: React.FC<NewSiteModalProps> = ({ isOpen, onClose, onA
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs font-sans">
+          <div className="flex justify-between items-center bg-blue-50/70 border border-blue-200/80 rounded-lg p-2.5 text-blue-900 text-[11px]">
+            <span>💡 Ingresa los datos del portal institucional o usa el botón de autocompletar:</span>
+            <button
+              type="button"
+              onClick={handleFillExample}
+              className="ml-2 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shrink-0 cursor-pointer shadow-xs transition-colors"
+            >
+              ⚡ Autocompletar Ejemplo
+            </button>
+          </div>
+
           <div>
             <label className="text-slate-700 block mb-1 font-medium">
               Nombre del Portal o Sistema *
@@ -75,6 +128,7 @@ export const NewSiteModal: React.FC<NewSiteModalProps> = ({ isOpen, onClose, onA
               required
               value={url}
               onChange={(e) => setUrl(e.target.value)}
+              onBlur={handleUrlBlur}
               placeholder="https://servicios.tacna.gob.pe"
               className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:border-red-500 focus:outline-none"
             />
@@ -82,17 +136,35 @@ export const NewSiteModal: React.FC<NewSiteModalProps> = ({ isOpen, onClose, onA
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-slate-700 block mb-1 font-medium">
-                Dirección IP Primaria *
-              </label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-slate-700 font-medium">
+                  Dirección IP Primaria
+                </label>
+                <button
+                  type="button"
+                  onClick={handleDetectIp}
+                  disabled={!url || isResolvingIp}
+                  className="text-[10px] text-red-600 hover:text-red-700 font-semibold flex items-center gap-0.5 disabled:opacity-40 cursor-pointer"
+                  title="Detectar IP automáticamente por DNS"
+                >
+                  {isResolvingIp ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Search className="w-3 h-3" />
+                  )}
+                  <span>{isResolvingIp ? 'Buscando...' : 'Detectar'}</span>
+                </button>
+              </div>
               <input
                 type="text"
-                required
                 value={ip}
                 onChange={(e) => setIp(e.target.value)}
-                placeholder="190.119.200.45"
+                placeholder="Auto-detectable por DNS"
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-900 focus:border-red-500 focus:outline-none font-mono"
               />
+              <p className="text-[10px] text-slate-400 mt-1">
+                💡 Opcional: Se resuelve vía DNS desde la URL.
+              </p>
             </div>
 
             <div>
