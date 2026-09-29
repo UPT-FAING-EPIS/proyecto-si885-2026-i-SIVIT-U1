@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Settings, 
   ShieldAlert, 
@@ -8,7 +8,9 @@ import {
   Save, 
   Check, 
   RotateCw,
-  Server
+  Server,
+  Sparkles,
+  Cpu
 } from 'lucide-react';
 import { SystemUser } from '../types';
 
@@ -26,7 +28,34 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [telegramAlerts, setTelegramAlerts] = useState(true);
   const [autoIpBlock, setAutoIpBlock] = useState(true);
+  const [geminiKey, setGeminiKey] = useState('');
   const [saved, setSaved] = useState(false);
+  const [keySaved, setKeySaved] = useState(false);
+
+  useEffect(() => {
+    const savedKey = localStorage.getItem('sivit_gemini_api_key') || '';
+    setGeminiKey(savedKey);
+  }, []);
+
+  const handleSaveGeminiKey = async () => {
+    if (geminiKey.trim()) {
+      localStorage.setItem('sivit_gemini_api_key', geminiKey.trim());
+      try {
+        await fetch('/api/ai/config-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey: geminiKey.trim() })
+        });
+      } catch (e) {
+        // LocalStorage is also saved
+      }
+    } else {
+      localStorage.removeItem('sivit_gemini_api_key');
+    }
+    setKeySaved(true);
+    onSaveSettingsNotification('Clave API de Gemini actualizada correctamente.');
+    setTimeout(() => setKeySaved(false), 2500);
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,6 +167,55 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 className="rounded text-red-600 focus:ring-red-500"
               />
             </label>
+          </div>
+        </div>
+
+        {/* Intelligence Engine & Gemini AI */}
+        <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4 shadow-xs">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h3 className="font-mono text-xs text-slate-700 uppercase tracking-wider flex items-center gap-2 font-bold">
+              <Sparkles className="w-4 h-4 text-red-600" />
+              Motor de Inteligencia Artificial (Google Gemini & SOC DAST)
+            </h3>
+            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+              geminiKey.trim() 
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                : 'bg-slate-100 text-slate-700 border border-slate-200'
+            }`}>
+              {geminiKey.trim() ? '✓ Gemini Activo' : '● Motor SOC Autónomo'}
+            </span>
+          </div>
+
+          <div className="space-y-3 text-xs font-sans">
+            <p className="text-slate-600 leading-relaxed">
+              El sistema evalúa objetivos web con un <strong>motor DAST heurístico autónomo</strong> sin requerir dependencias externas. Opcionalmente, puede vincular su <strong>API Key gratuita de Google Gemini 2.0 Flash</strong> (obtenida en <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-red-600 underline font-medium hover:text-red-700">Google AI Studio</a>) para análisis generativo en tiempo real.
+            </p>
+
+            <div>
+              <label className="text-slate-700 block mb-1 font-medium">
+                Google Gemini API Key (Opcional):
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="password"
+                  value={geminiKey}
+                  onChange={(e) => setGeminiKey(e.target.value)}
+                  placeholder="AIzaSy..."
+                  className="flex-1 bg-slate-50 border border-slate-300 rounded-lg p-2.5 font-mono text-slate-900 focus:border-red-500 focus:outline-none text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveGeminiKey}
+                  className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold flex items-center gap-1.5 transition-colors cursor-pointer text-xs shrink-0"
+                >
+                  {keySaved ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Key className="w-3.5 h-3.5" />}
+                  <span>{keySaved ? 'Guardada' : 'Guardar Clave'}</span>
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Se guarda en su sesión y en el servidor local. Si se deja vacía, el sistema opera con el motor de diagnóstico SOC integrado.
+              </p>
+            </div>
           </div>
         </div>
 

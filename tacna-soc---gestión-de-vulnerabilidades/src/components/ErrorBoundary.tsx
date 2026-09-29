@@ -36,23 +36,23 @@ export class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#0a0f1e] text-white flex items-center justify-center p-6 font-sans">
-          <div className="max-w-md w-full bg-slate-900/90 backdrop-blur-xl border border-red-500/30 rounded-2xl p-7 text-center shadow-2xl animate-in fade-in duration-200">
-            <div className="w-14 h-14 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-50/40 to-slate-100 text-slate-900 flex items-center justify-center p-6 font-sans">
+          <div className="max-w-md w-full bg-white border border-red-200 rounded-3xl p-8 text-center shadow-2xl shadow-red-950/10 animate-in fade-in duration-200">
+            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-200 shadow-sm">
               <ShieldAlert className="w-8 h-8" />
             </div>
-            <h2 className="text-xl font-bold mb-2 text-white">Sesión Protegida del SOC</h2>
-            <p className="text-xs text-slate-400 mb-5 leading-relaxed">
+            <h2 className="text-xl font-bold mb-2 text-slate-900">Sesión Protegida del SOC</h2>
+            <p className="text-xs text-slate-500 mb-5 leading-relaxed">
               El sistema detectó un estado inconsistente en la memoria del navegador. Pulsa el botón inferior para restablecer la sesión limpia e ingresar al SOC.
             </p>
             {this.state.error && (
-              <pre className="text-[10px] text-red-400 bg-red-950/40 p-3 rounded-lg border border-red-900/50 mb-5 text-left overflow-x-auto font-mono max-h-28">
+              <pre className="text-[11px] text-red-700 bg-red-50 p-3 rounded-xl border border-red-200 mb-5 text-left overflow-x-auto font-mono max-h-28">
                 {this.state.error.message}
               </pre>
             )}
             <button
               onClick={this.handleReset}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer text-xs shadow-lg shadow-red-600/30"
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer text-sm shadow-lg shadow-red-600/30 active:scale-[0.99]"
             >
               <RefreshCw className="w-4 h-4" />
               <span>Limpiar Estado y Recargar</span>

@@ -37,6 +37,7 @@ export interface AIAnalysis {
     impacto: string;
     cvss?: number;
   }>;
+  motor?: string;
   error?: string;
 }
 
@@ -54,10 +55,11 @@ export async function scanUrl(url: string): Promise<ScanResult> {
 }
 
 export async function analyzeWithAI(scanResult: ScanResult): Promise<AIAnalysis> {
+  const customApiKey = localStorage.getItem('sivit_gemini_api_key') || undefined;
   const response = await fetch('/api/ai/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ scanResult, url: scanResult.url }),
+    body: JSON.stringify({ scanResult, url: scanResult.url, apiKey: customApiKey }),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({ error: response.statusText }));

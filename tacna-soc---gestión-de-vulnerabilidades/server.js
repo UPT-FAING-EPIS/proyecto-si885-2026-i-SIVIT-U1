@@ -72,25 +72,162 @@ app.get('/api/cve/search', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// GEMINI AI ANALYSIS ENDPOINT
+// SOC HEURISTIC AI DIAGNOSTIC ENGINE (FALLBACK)
 // ─────────────────────────────────────────────
-app.post('/api/ai/analyze', async (req, res) => {
-  const { scanResult, url } = req.body;
-  if (!GEMINI_API_KEY) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY no configurada' });
+function generateSocAiAnalysis(scanResult, targetUrl) {
+  const findings = scanResult?.findings || [];
+  const server = scanResult?.server || 'Desconocido';
+  const poweredBy = scanResult?.poweredBy || '';
+  const isHttps = scanResult?.isHttps ?? true;
+  const critical = scanResult?.critical || 0;
+  const high = scanResult?.high || 0;
+  const medium = scanResult?.medium || 0;
+  const low = scanResult?.low || 0;
+  const totalFindings = scanResult?.totalFindings || findings.length;
+
+  // Calculate security score (0 - 100)
+  let score = 100 - (critical * 25) - (high * 15) - (medium * 8) - (low * 3);
+  if (!isHttps) score -= 30;
+  score = Math.max(15, Math.min(98, score));
+
+  // Determine general risk level
+  let riesgoGeneral = 'Bajo';
+  if (critical > 0 || score < 45 || !isHttps) {
+    riesgoGeneral = 'Crítico';
+  } else if (high > 0 || score < 70) {
+    riesgoGeneral = 'Alto';
+  } else if (medium > 0 || score < 85) {
+    riesgoGeneral = 'Medio';
   }
 
-  const findings = (scanResult.findings || [])
-    .map(f => `- [${f.severity}] ${f.name}: ${f.description}`)
-    .join('\n');
+  const isLegacyPhp = /php\/5\./i.test(server) || /php\/5\./i.test(poweredBy);
+  const cleanTarget = (targetUrl || 'el objetivo').replace(/^https?:\/\//, '').replace(/\/.*$/, '');
 
-  const prompt = `Eres un experto en ciberseguridad del SOC de Tacna, Peru. Analiza estos resultados de escaneo de seguridad y responde SOLO con un JSON valido sin markdown.
+  // Executive summary
+  let resumen = `Evaluación DAST perimetral generada por el Centro de Operaciones de Seguridad (SOC) para el activo institucional ${cleanTarget}. `;
+  if (!isHttps) {
+    resumen += `ALERTA CRÍTICA: El canal de comunicación no dispone de certificado TLS/HTTPS activo, transmitiendo datos y credenciales en texto plano susceptible a intercepción Man-in-the-Middle (MitM). `;
+  } else if (isLegacyPhp) {
+    resumen += `El servidor aloja una pila de software desfasada (${server} ${poweredBy ? '/ ' + poweredBy : ''}) en estado End-Of-Life (EOL), con vulnerabilidades críticas registradas en CVE para denegación de servicio y ejecución remota de código (RCE). `;
+  } else if (high > 0) {
+    resumen += `Se identificaron ${totalFindings} debilidades perimetrales en las cabeceras HTTP de respuesta, destacando la carencia de políticas CSP y HSTS para mitigación de ataques XSS y secuestro de sesiones. `;
+  } else {
+    resumen += `La superficie perimetral se mantiene estable con ${totalFindings} observaciones de divulgación de banners de software e información del entorno. `;
+  }
+  resumen += `Se asigna una puntuación de blindaje de ${score}/100 y una calificación de riesgo general ${riesgoGeneral.toUpperCase()}.`;
 
-URL analizada: ${url}
-Servidor: ${scanResult.server || 'desconocido'}
-HTTPS: ${scanResult.isHttps ? 'Si' : 'No'}
-Tiempo de respuesta: ${scanResult.responseTime || 0}ms
-Hallazgos (${scanResult.totalFindings}):
+  // Actionable recommendations
+  const recomendaciones = [];
+  if (!isHttps) {
+    recomendaciones.push("Habilitar certificado SSL/TLS (Let's Encrypt o corporativo) y forzar la redirección permanente HTTP 301 a HTTPS.");
+  }
+  if (findings.some(f => f.name.includes('CSP') || f.cwe === 'CWE-79')) {
+    recomendaciones.push("Implementar la cabecera Content-Security-Policy (CSP) restrictiva con 'default-src self' para neutralizar inyecciones de script malicioso (XSS).");
+  }
+  if (findings.some(f => f.name.includes('HSTS') || f.cwe === 'CWE-319')) {
+    recomendaciones.push("Configurar Strict-Transport-Security (HSTS) con max-age=31536000 e includeSubDomains para forzar navegación cifrada.");
+  }
+  if (isLegacyPhp) {
+    recomendaciones.push("Migrar urgentemente el entorno PHP 5.5 a una versión con soporte de parches de seguridad activo (PHP 8.2+) para eliminar fallos RCE conocidos.");
+  }
+  if (findings.some(f => f.name.includes('Server') || f.name.includes('X-Powered-By') || f.cwe === 'CWE-200')) {
+    recomendaciones.push("Ocultar cabeceras de identificación de software en el servidor web (ServerTokens Prod en Apache / expose_php = Off en php.ini).");
+  }
+  if (findings.some(f => f.name.includes('X-Frame-Options') || f.cwe === 'CWE-1021')) {
+    recomendaciones.push("Añadir X-Frame-Options: SAMEORIGIN o directiva frame-ancestors en CSP para prevenir ataques de Clickjacking.");
+  }
+  if (findings.some(f => f.name.includes('X-Content-Type-Options') || f.cwe === 'CWE-430')) {
+    recomendaciones.push("Configurar X-Content-Type-Options: nosniff para impedir ataques basados en confusión de tipos MIME.");
+  }
+  if (recomendaciones.length === 0) {
+    recomendaciones.push("Mantener el monitoreo continuo de cabeceras de seguridad y análisis DAST periódico en el SOC.");
+    recomendaciones.push("Programar auditorías de código estático (SAST) complementarias en los portales institucionales.");
+  }
+
+  // Key vulnerabilities with CVSS
+  const vulnerabilidadesPrincipales = [];
+  if (isLegacyPhp) {
+    vulnerabilidadesPrincipales.push({
+      nombre: "Software EOL Desactualizado (PHP 5.5 / Apache 2.4 EOL)",
+      descripcion: `El servidor web divulga "${server} ${poweredBy}". La versión detectada carece de parches oficiales desde 2016 y cuenta con más de 30 vulnerabilidades públicas documentadas.`,
+      impacto: "Posible explotación de fallos de desbordamiento de búfer y ejecución remota de comandos (RCE) por actores maliciosos.",
+      cvss: 8.8
+    });
+  }
+  if (findings.some(f => f.name.includes('CSP') || f.cwe === 'CWE-79')) {
+    vulnerabilidadesPrincipales.push({
+      nombre: "Ausencia de Content Security Policy (CSP)",
+      descripcion: "El servidor no especifica restricciones de origen para scripts, estilos o peticiones asíncronas externas.",
+      impacto: "Permite la ejecución de scripts arbitrarios en el navegador del cliente mediante Cross-Site Scripting (XSS).",
+      cvss: 7.5
+    });
+  }
+  if (findings.some(f => f.name.includes('HSTS') || f.cwe === 'CWE-319')) {
+    vulnerabilidadesPrincipales.push({
+      nombre: "Falta de Forzado de Encriptación HSTS",
+      descripcion: "Ausencia de la cabecera Strict-Transport-Security en las respuestas del servidor.",
+      impacto: "Vulnerabilidad a ataques de degradación de cifrado (SSL-Stripping) en redes locales no seguras.",
+      cvss: 7.2
+    });
+  }
+  if (findings.some(f => f.name.includes('Server') || f.name.includes('X-Powered-By') || f.cwe === 'CWE-200')) {
+    vulnerabilidadesPrincipales.push({
+      nombre: "Divulgación de Información de Servidor (Banner Exposure)",
+      descripcion: `Exposición pública de versiones detalladas: ${server} ${poweredBy}.`,
+      impacto: "Facilita la fase de reconocimiento de atacantes para búsqueda automatizada de exploits compatibles.",
+      cvss: 5.3
+    });
+  }
+  if (findings.some(f => f.name.includes('X-Frame-Options') || f.cwe === 'CWE-1021')) {
+    vulnerabilidadesPrincipales.push({
+      nombre: "Vulnerabilidad a Clickjacking (Sin X-Frame-Options)",
+      descripcion: "El aplicativo carece de directivas para impedir que sea cargado en elementos <iframe> de otros sitios.",
+      impacto: "Un atacante puede inducir a usuarios a realizar acciones no deseadas superponiendo interfaces transparentes.",
+      cvss: 5.4
+    });
+  }
+
+  if (vulnerabilidadesPrincipales.length === 0 && findings.length > 0) {
+    const first = findings[0];
+    vulnerabilidadesPrincipales.push({
+      nombre: first.name,
+      descripcion: first.description,
+      impacto: "Aumento de la superficie de ataque perimetral del sistema web.",
+      cvss: first.severity === 'CRITICAL' ? 9.0 : first.severity === 'HIGH' ? 7.5 : first.severity === 'MEDIUM' ? 5.5 : 3.5
+    });
+  }
+
+  return {
+    resumen,
+    riesgoGeneral,
+    puntuacion: score,
+    recomendaciones: recomendaciones.slice(0, 5),
+    vulnerabilidadesPrincipales: vulnerabilidadesPrincipales.slice(0, 4),
+    motor: 'Motor de Inteligencia SOC (Automático)'
+  };
+}
+
+// ─────────────────────────────────────────────
+// GEMINI AI ANALYSIS ENDPOINT (WITH AUTO FALLBACK)
+// ─────────────────────────────────────────────
+app.post('/api/ai/analyze', async (req, res) => {
+  const { scanResult, url, apiKey } = req.body;
+  const activeKey = apiKey || process.env.GEMINI_API_KEY;
+
+  // If Gemini API Key is configured, attempt call to Google Gemini
+  if (activeKey && activeKey !== 'MY_GEMINI_API_KEY') {
+    try {
+      const findings = (scanResult?.findings || [])
+        .map(f => `- [${f.severity}] ${f.name}: ${f.description}`)
+        .join('\n');
+
+      const prompt = `Eres un experto en ciberseguridad del SOC de Tacna, Peru. Analiza estos resultados de escaneo de seguridad y responde SOLO con un JSON valido sin markdown.
+
+URL analizada: ${url || scanResult?.url}
+Servidor: ${scanResult?.server || 'desconocido'}
+HTTPS: ${scanResult?.isHttps ? 'Si' : 'No'}
+Tiempo de respuesta: ${scanResult?.responseTime || 0}ms
+Hallazgos (${scanResult?.totalFindings || 0}):
 ${findings || 'Ninguno encontrado'}
 
 Responde con este JSON exacto:
@@ -104,37 +241,75 @@ Responde con este JSON exacto:
   ]
 }`;
 
-  try {
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 1024 }
-        })
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 9000);
+
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${activeKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.3, maxOutputTokens: 1024 }
+          })
+        }
+      );
+      clearTimeout(timeoutId);
+
+      if (geminiRes.ok) {
+        const geminiData = await geminiRes.json();
+        const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const analysis = JSON.parse(jsonMatch[0]);
+          return res.json({
+            ...analysis,
+            motor: 'Google Gemini 2.0 Flash'
+          });
+        }
+      } else {
+        const errData = await geminiRes.json().catch(() => ({}));
+        console.warn('[Gemini API] Error al consultar Google AI:', errData.error?.message || geminiRes.statusText);
       }
-    );
-    if (!geminiRes.ok) {
-      const errData = await geminiRes.json();
-      throw new Error(errData.error?.message || 'Error en Gemini API');
+    } catch (geminiErr) {
+      console.warn('[Gemini API] Fallo en la llamada remota, activando motor heurístico SOC:', geminiErr.message);
     }
-    const geminiData = await geminiRes.json();
-    const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    const analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : { resumen: rawText, riesgoGeneral: 'Desconocido' };
-    res.json(analysis);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
+
+  // Graceful Fallback: Generate specialized SOC heuristic analysis report
+  const socAnalysis = generateSocAiAnalysis(scanResult, url || scanResult?.url);
+  return res.json(socAnalysis);
+});
+
+// ─────────────────────────────────────────────
+// CONFIG GEMINI KEY ENDPOINT
+// ─────────────────────────────────────────────
+app.post('/api/ai/config-key', (req, res) => {
+  const { apiKey } = req.body;
+  if (!apiKey || typeof apiKey !== 'string') {
+    return res.status(400).json({ error: 'API Key inválida' });
+  }
+  process.env.GEMINI_API_KEY = apiKey.trim();
+  res.json({
+    success: true,
+    message: 'GEMINI_API_KEY configurada exitosamente en el servidor',
+    configured: true
+  });
 });
 
 // ─────────────────────────────────────────────
 // HEALTH CHECK
 // ─────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), geminiConfigured: !!GEMINI_API_KEY });
+  const hasKey = !!(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY');
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    geminiConfigured: hasKey,
+    motorActivo: hasKey ? 'Google Gemini 2.0 Flash' : 'Motor SOC Heurístico'
+  });
 });
 
 // ─────────────────────────────────────────────

@@ -89,6 +89,7 @@ export interface SystemUser {
   id: string;
   name: string;
   email: string;
+  password?: string;
   avatarUrl?: string;
   role: 'Super Admin' | 'Security Analyst' | 'Auditor' | 'Operator';
   department: string;

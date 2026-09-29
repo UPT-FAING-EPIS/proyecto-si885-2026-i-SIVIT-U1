@@ -123,7 +123,7 @@ export const GuideView: React.FC<GuideViewProps> = ({ onNavigateTab, onOpenNewSc
       name: 'Gestión de Sitios Web',
       icon: Globe,
       badge: 'Activos',
-      color: 'text-blue-600 bg-blue-50 border-blue-200',
+      color: 'text-red-600 bg-red-50 border-red-200',
       desc: 'Inventario de activos digitales categorizados por sector (Gobierno, Educación, Salud). Permite registrar nuevos dominios y ver el histórico de cada sitio.',
       action: () => onNavigateTab('websites')
     },
@@ -132,7 +132,7 @@ export const GuideView: React.FC<GuideViewProps> = ({ onNavigateTab, onOpenNewSc
       name: 'Vulnerabilidades & CVEs',
       icon: ShieldAlert,
       badge: 'NVD / NIST',
-      color: 'text-amber-600 bg-amber-50 border-amber-200',
+      color: 'text-red-700 bg-red-50 border-red-200',
       desc: 'Base de conocimiento de fallas de seguridad identificadas con score CVSS v3.1, códigos CWE, criticidad y guía práctica de mitigación para administradores.',
       action: () => onNavigateTab('vulnerabilities')
     },
@@ -141,7 +141,7 @@ export const GuideView: React.FC<GuideViewProps> = ({ onNavigateTab, onOpenNewSc
       name: 'Historial de Evaluaciones',
       icon: CheckCircle2,
       badge: 'Escaneos',
-      color: 'text-emerald-600 bg-emerald-50 border-emerald-200',
+      color: 'text-red-600 bg-red-50 border-red-200',
       desc: 'Registro cronológico de todas las inspecciones realizadas. Muestra calificación por letras (A a F), hallazgos detallados y opción de re-escanear.',
       action: () => onNavigateTab('evaluaciones')
     },
@@ -150,7 +150,7 @@ export const GuideView: React.FC<GuideViewProps> = ({ onNavigateTab, onOpenNewSc
       name: 'Reportes Ejecutivos',
       icon: FileText,
       badge: 'Exportable',
-      color: 'text-indigo-600 bg-indigo-50 border-indigo-200',
+      color: 'text-red-600 bg-red-50 border-red-200',
       desc: 'Generación de informes de ciberseguridad ejecutivos y técnicos con métricas consolidadas, estado de cumplimiento y plan de acción recomendado.',
       action: () => onNavigateTab('reports')
     },
@@ -159,7 +159,7 @@ export const GuideView: React.FC<GuideViewProps> = ({ onNavigateTab, onOpenNewSc
       name: 'Fuentes de Inteligencia',
       icon: Server,
       badge: 'Threat Intel',
-      color: 'text-purple-600 bg-purple-50 border-purple-200',
+      color: 'text-red-700 bg-red-50 border-red-200',
       desc: 'Conectores con feeds de ciberinteligencia globales como NIST NVD, MITRE ATT&CK, OWASP Top 10 y CISA KEV con estado de sincronización en vivo.',
       action: () => onNavigateTab('data-sources')
     },
@@ -168,17 +168,17 @@ export const GuideView: React.FC<GuideViewProps> = ({ onNavigateTab, onOpenNewSc
       name: 'Administración de Usuarios',
       icon: Users,
       badge: 'Admin Only',
-      color: 'text-slate-700 bg-slate-100 border-slate-300',
-      desc: 'Control de accesos y roles (Super Admin, Security Analyst, Auditor, Operator). Creación, edición de privilegios y auditoría de cuentas.',
+      color: 'text-red-600 bg-red-50 border-red-200',
+      desc: 'Control de accesos y roles (RBAC). Permite invitar analistas, activar o suspender credenciales y delegar privilegios de operador o auditor.',
       action: () => onNavigateTab('user-management')
     },
     {
       id: 'audit-logs',
-      name: 'Logs & Trazabilidad Forense',
+      name: 'Logs y Auditoría SHA-256',
       icon: ScrollText,
-      badge: 'SHA-256',
-      color: 'text-rose-600 bg-rose-50 border-rose-200',
-      desc: 'Bitácora de eventos de seguridad inmutable. Cada registro almacena usuario, timestamp, IP, severidad, descripción y firma hash SHA-256 para auditorías.',
+      badge: 'Inmutable',
+      color: 'text-red-600 bg-red-50 border-red-200',
+      desc: 'Trazabilidad criptográfica forense de todos los eventos del sistema con cálculo de checksum SHA-256 para garantizar la no-repudiación.',
       action: () => onNavigateTab('audit-logs')
     }
   ];
@@ -215,28 +215,28 @@ export const GuideView: React.FC<GuideViewProps> = ({ onNavigateTab, onOpenNewSc
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-200 pb-16">
-      {/* Hero Banner Header */}
-      <div className="relative rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-red-950 text-white p-6 md:p-8 overflow-hidden shadow-xl border border-red-900/30">
-        <div className="absolute right-0 top-0 w-96 h-96 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -left-12 -bottom-12 w-64 h-64 bg-blue-600/10 rounded-full blur-2xl pointer-events-none" />
+    <div className="space-y-8 animate-in fade-in duration-200 pb-28">
+      {/* Hero Banner Header — Blanco y Rojo Institucional */}
+      <div className="relative rounded-3xl bg-gradient-to-br from-white via-red-50/50 to-white text-slate-900 p-6 md:p-8 overflow-hidden shadow-sm border border-red-200">
+        <div className="absolute right-0 top-0 w-96 h-96 bg-red-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -left-12 -bottom-12 w-64 h-64 bg-red-600/10 rounded-full blur-2xl pointer-events-none" />
         
         <div className="relative z-10 max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/20 text-red-300 border border-red-500/30 text-xs font-semibold uppercase tracking-wider mb-4">
-            <BookOpen className="w-3.5 h-3.5 text-red-400" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-100 text-red-700 border border-red-200 text-xs font-bold uppercase tracking-wider mb-4">
+            <BookOpen className="w-3.5 h-3.5 text-red-600" />
             Centro de Ayuda &amp; Manual de Usuario
           </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
-            Guía de Uso del Sistema Tacna SOC
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 leading-tight">
+            Guía de Uso del Sistema <span className="text-red-600">Tacna SOC</span>
           </h1>
-          <p className="mt-2.5 text-slate-300 text-sm md:text-base leading-relaxed">
+          <p className="mt-2.5 text-slate-600 text-sm md:text-base leading-relaxed">
             Bienvenido al Centro de Operaciones de Seguridad de Tacna. En este manual interactivo aprenderás cómo navegar la plataforma, escanear sitios web en tiempo real, interpretar el análisis de Gemini AI y auditar la seguridad institucional.
           </p>
 
           <div className="flex flex-wrap items-center gap-3 mt-6">
             <button
               onClick={() => onNavigateTab('dashboard')}
-              className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white text-xs md:text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-red-600/30 transition-all hover:scale-[1.02]"
+              className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-xs md:text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md shadow-red-600/30 transition-all hover:scale-[1.02] cursor-pointer"
             >
               <Shield className="w-4 h-4" />
               Ir al Dashboard
@@ -244,17 +244,17 @@ export const GuideView: React.FC<GuideViewProps> = ({ onNavigateTab, onOpenNewSc
             {onOpenNewScan && (
               <button
                 onClick={onOpenNewScan}
-                className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/15 text-xs md:text-sm font-semibold px-4 py-2.5 rounded-xl transition-all"
+                className="inline-flex items-center gap-2 bg-white hover:bg-red-50 text-red-700 border border-red-200 text-xs md:text-sm font-semibold px-4 py-2.5 rounded-xl transition-all cursor-pointer shadow-xs"
               >
-                <Zap className="w-4 h-4 text-amber-400" />
+                <Zap className="w-4 h-4 text-red-600" />
                 Ejecutar un Escaneo
               </button>
             )}
             <button
               onClick={() => onNavigateTab('websites')}
-              className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/15 text-xs md:text-sm font-semibold px-4 py-2.5 rounded-xl transition-all"
+              className="inline-flex items-center gap-2 bg-white hover:bg-red-50 text-slate-700 hover:text-red-700 border border-slate-200 hover:border-red-200 text-xs md:text-sm font-semibold px-4 py-2.5 rounded-xl transition-all cursor-pointer shadow-xs"
             >
-              <Globe className="w-4 h-4 text-blue-400" />
+              <Globe className="w-4 h-4 text-red-600" />
               Explorar Sitios Web
             </button>
           </div>
@@ -544,21 +544,21 @@ export const GuideView: React.FC<GuideViewProps> = ({ onNavigateTab, onOpenNewSc
         </section>
       )}
 
-      {/* Academic / Project Credits Footer Card */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
+      {/* Academic / Project Credits Footer Card — Blanco y Rojo */}
+      <div className="rounded-3xl border border-red-200 bg-white p-6 flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left shadow-xs mb-6">
         <div>
           <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
             Universidad Privada de Tacna · FAING · EPIS
           </h4>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 mt-1">
             Asignatura: SI885 — Seguridad de la Información y Gestión de Vulnerabilidades (2026-I)
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold font-mono">
+          <span className="px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold font-mono border border-red-200">
             v2.1 SOC LIVE
           </span>
-          <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold font-mono">
+          <span className="px-3 py-1 rounded-full bg-red-50 text-red-600 text-xs font-bold font-mono border border-red-100">
             Gemini 2.0 AI
           </span>
         </div>

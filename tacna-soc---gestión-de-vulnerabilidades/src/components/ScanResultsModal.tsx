@@ -179,52 +179,71 @@ export function ScanResultsModal({ isOpen, isScanning, scanResult, aiAnalysis, i
               )}
 
               {/* AI Analysis */}
-              <div className="border border-purple-200 rounded-xl overflow-hidden">
-                <div className="bg-gradient-to-r from-purple-700 to-indigo-700 px-4 py-3 flex items-center gap-2">
-                  <svg className="w-4 h-4 text-purple-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.344.344a3.999 3.999 0 01-2.829 1.172H9.828a4 4 0 01-2.829-1.172l-.344-.344z" />
-                  </svg>
-                  <span className="text-sm font-semibold text-white">Análisis de Inteligencia Artificial (Gemini)</span>
+              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+                <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-red-950 px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6 h-6 rounded-md bg-red-600/40 border border-red-500/50 flex items-center justify-center">
+                      <svg className="w-3.5 h-3.5 text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <span className="text-sm font-semibold text-white">Análisis de Inteligencia Artificial (DAST SOC)</span>
+                    <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-red-900/60 text-red-200 border border-red-700/50 font-medium">
+                      {aiAnalysis?.motor || 'Motor SOC IA'}
+                    </span>
+                  </div>
                   {isAnalyzingAI && (
-                    <div className="ml-auto flex gap-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-red-200 font-mono mr-1">Analizando</span>
                       {[0,1,2].map(i => (
-                        <div key={i} className="w-1.5 h-1.5 rounded-full bg-purple-300 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                        <div key={i} className="w-1.5 h-1.5 rounded-full bg-red-400 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
                       ))}
                     </div>
                   )}
                 </div>
 
-                <div className="p-4 bg-purple-50 space-y-4">
+                <div className="p-5 bg-white space-y-4">
                   {isAnalyzingAI ? (
-                    <p className="text-sm text-purple-500 animate-pulse">Analizando con Gemini AI...</p>
+                    <div className="flex items-center gap-3 text-sm text-slate-600 py-3">
+                      <div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin shrink-0" />
+                      <p className="text-sm text-slate-600">Correlacionando hallazgos perimetrales y evaluando postura de riesgo...</p>
+                    </div>
                   ) : aiAnalysis?.error ? (
-                    <p className="text-sm text-red-500">{aiAnalysis.error}</p>
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 space-y-1">
+                      <p className="font-semibold">Observación de consulta:</p>
+                      <p>{aiAnalysis.error}</p>
+                    </div>
                   ) : aiAnalysis ? (
                     <>
                       {/* Risk level + score */}
                       <div className="flex items-center gap-3">
-                        <span className={`${riskCfg.bg} ${riskCfg.text} text-xs font-bold px-3 py-1 rounded-full`}>
+                        <span className={`${riskCfg.bg} ${riskCfg.text} text-xs font-bold px-3 py-1 rounded-full shadow-xs`}>
                           Riesgo: {aiAnalysis.riesgoGeneral}
                         </span>
                         {aiAnalysis.puntuacion !== undefined && (
                           <span className="text-xs text-slate-600 font-mono">
-                            Puntuación de seguridad: <span className="font-bold text-slate-800">{aiAnalysis.puntuacion}/100</span>
+                            Puntuación de blindaje: <span className="font-bold text-slate-900 text-sm">{aiAnalysis.puntuacion}/100</span>
                           </span>
                         )}
                       </div>
 
                       {/* Summary */}
-                      <p className="text-sm text-slate-700 leading-relaxed">{aiAnalysis.resumen}</p>
+                      <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                        <p className="text-xs text-slate-700 leading-relaxed font-sans">{aiAnalysis.resumen}</p>
+                      </div>
 
                       {/* Recommendations */}
                       {aiAnalysis.recomendaciones?.length > 0 && (
                         <div>
-                          <p className="text-xs font-bold text-purple-700 uppercase tracking-wider mb-2">Recomendaciones</p>
-                          <ul className="space-y-1.5">
+                          <p className="text-xs font-bold text-red-700 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-red-600" />
+                            Plan de Mitigación y Recomendaciones
+                          </p>
+                          <ul className="space-y-2">
                             {aiAnalysis.recomendaciones.map((r, i) => (
-                              <li key={i} className="text-xs text-slate-600 flex items-start gap-2">
-                                <span className="text-purple-500 mt-0.5 shrink-0">→</span>
-                                {r}
+                              <li key={i} className="text-xs text-slate-700 flex items-start gap-2 bg-slate-50/70 p-2.5 rounded-lg border border-slate-100">
+                                <span className="text-red-600 font-bold mt-0.5 shrink-0">→</span>
+                                <span>{r}</span>
                               </li>
                             ))}
                           </ul>
@@ -234,16 +253,25 @@ export function ScanResultsModal({ isOpen, isScanning, scanResult, aiAnalysis, i
                       {/* Key vulnerabilities */}
                       {aiAnalysis.vulnerabilidadesPrincipales?.length > 0 && (
                         <div>
-                          <p className="text-xs font-bold text-purple-700 uppercase tracking-wider mb-2">Vulnerabilidades Principales</p>
-                          <div className="space-y-2">
+                          <p className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-slate-700" />
+                            Vulnerabilidades Principales Identificadas
+                          </p>
+                          <div className="space-y-2.5">
                             {aiAnalysis.vulnerabilidadesPrincipales.map((v, i) => (
-                              <div key={i} className="bg-white rounded-lg p-3 border border-purple-100">
-                                <div className="flex items-center justify-between">
-                                  <p className="text-xs font-semibold text-slate-800">{v.nombre}</p>
-                                  {v.cvss && <span className="text-xs text-red-600 font-mono font-bold">CVSS {v.cvss}</span>}
+                              <div key={i} className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-xs hover:border-red-200 transition-colors">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-xs font-bold text-slate-900">{v.nombre}</p>
+                                  {v.cvss && (
+                                    <span className="text-[11px] bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded font-mono font-bold shrink-0">
+                                      CVSS {v.cvss}
+                                    </span>
+                                  )}
                                 </div>
-                                <p className="text-xs text-slate-500 mt-1">{v.descripcion}</p>
-                                <p className="text-xs text-orange-600 mt-1 font-medium">Impacto: {v.impacto}</p>
+                                <p className="text-xs text-slate-600 mt-1 leading-relaxed">{v.descripcion}</p>
+                                <p className="text-[11px] text-amber-800 bg-amber-50/80 px-2 py-1 rounded border border-amber-100 mt-2 font-medium">
+                                  <strong>Impacto Operativo:</strong> {v.impacto}
+                                </p>
                               </div>
                             ))}
                           </div>
