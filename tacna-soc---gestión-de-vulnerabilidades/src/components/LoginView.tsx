@@ -81,12 +81,6 @@ export function LoginView({ onLogin }: LoginViewProps) {
     onLogin({ email: found.email, name: found.name, role: found.role });
   };
 
-  const fillQuickRole = (email: string, password: string) => {
-    setLoginEmail(email);
-    setLoginPassword(password);
-    setLoginError('');
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-50/30 to-slate-100 flex items-center justify-center p-4 relative overflow-hidden font-sans">
       {/* Subtle red ambient glow decorations */}
@@ -189,26 +183,10 @@ export function LoginView({ onLogin }: LoginViewProps) {
               )}
             </button>
 
-            {/* Quick role selection */}
-            <div className="pt-4 border-t border-slate-100 mt-5">
-              <p className="text-[11px] text-slate-400 font-semibold mb-2.5 text-center uppercase tracking-wider">
-                Acceso rápido por rol institucional:
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {DEMO_USERS.map(u => (
-                  <button
-                    key={u.role}
-                    type="button"
-                    onClick={() => fillQuickRole(u.email, u.password)}
-                    className="px-3 py-2 rounded-xl bg-slate-50 hover:bg-red-50/80 border border-slate-200 hover:border-red-300 text-left transition-all group cursor-pointer"
-                  >
-                    <p className="text-xs font-bold text-slate-800 group-hover:text-red-600 transition-colors">
-                      {u.role}
-                    </p>
-                    <p className="text-[10px] font-mono text-slate-500 truncate">{u.name}</p>
-                  </button>
-                ))}
-              </div>
+            {/* Security Notice */}
+            <div className="pt-4 border-t border-slate-100 mt-5 flex items-center justify-center gap-1.5 text-slate-400 text-[11px] font-mono">
+              <Lock className="w-3.5 h-3.5 text-slate-400" />
+              <span>Acceso seguro y auditado · Tacna SOC</span>
             </div>
           </form>
         </div>
